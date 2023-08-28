@@ -1,11 +1,14 @@
+#define _POSIX_C_SOURCE 200809L
 #include <assert.h>
 #include <drm_fourcc.h>
 #include <stdlib.h>
+#include <time.h>
 #include <wlr/interfaces/wlr_output.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_matrix.h>
 #include <wlr/util/log.h>
+#include <util/time.h>
 #include "render/allocator/allocator.h"
 #include "render/swapchain.h"
 #include "types/wlr_buffer.h"
@@ -531,15 +534,10 @@ void wlr_output_cursor_set_surface(struct wlr_output_cursor *cursor,
 	}
 }
 
-bool wlr_output_cursor_move(struct wlr_output_cursor *cursor,
-		double x, double y) {
-	// Scale coordinates for the output
-	x *= cursor->output->scale;
-	y *= cursor->output->scale;
-
-	if (cursor->x == x && cursor->y == y) {
-		return true;
-	}
+static bool output_cursor_move(struct wlr_output_cursor *cursor,
+		double x, double y, struct timespec *now) {
+	cursor->last_presentation = *now;
+	cursor->deferred = false;
 
 	if (cursor->output->hardware_cursor != cursor) {
 		output_cursor_damage_whole(cursor);
@@ -562,6 +560,71 @@ bool wlr_output_cursor_move(struct wlr_output_cursor *cursor,
 
 	assert(cursor->output->impl->move_cursor);
 	return cursor->output->impl->move_cursor(cursor->output, (int)x, (int)y);
+}
+
+static bool output_cursor_move_should_defer(struct wlr_output_cursor *cursor,
+		struct timespec *now) {
+	if (!cursor->max_latency
+		|| !cursor->output->refresh // avoid divide by zero
+		|| cursor->output->adaptive_sync_status != WLR_OUTPUT_ADAPTIVE_SYNC_ENABLED)
+		return false;
+
+	struct timespec delta;
+	int32_t vrr_min = NSEC_PER_SEC / 30; // edid? enforce 30fps minimum for now.
+	timespec_sub(&delta, now, &cursor->last_presentation);
+	if (delta.tv_sec
+		|| delta.tv_nsec >= cursor->max_latency
+        || delta.tv_nsec >= vrr_min)
+		return false;
+
+	return true;
+}
+
+bool wlr_output_cursor_move(struct wlr_output_cursor *cursor,
+		double x, double y) {
+	// Scale coordinates for the output
+	x *= cursor->output->scale;
+	y *= cursor->output->scale;
+
+	if (cursor->x == x && cursor->y == y) {
+		return true;
+	}
+
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+
+	if (output_cursor_move_should_defer(cursor, &now)) {
+		cursor->deferred_x = x;
+		cursor->deferred_y = y;
+		cursor->deferred = true;
+		return true;
+	}
+
+	return output_cursor_move(cursor, x, y, &now);
+}
+
+void wlr_output_cursor_move_expired(struct wlr_output_cursor *cursor, struct timespec *now) {
+		if (cursor->deferred && !output_cursor_move_should_defer(cursor, now))
+			output_cursor_move(cursor, cursor->deferred_x, cursor->deferred_y, now);
+}
+
+void wlr_output_cursor_move_any_expired(struct wlr_output *output, struct timespec *now) {
+	struct wlr_output_cursor *cursor;
+	wl_list_for_each(cursor, &output->cursors, link) {
+		wlr_output_cursor_move_expired(cursor, now);
+	}
+}
+
+void wlr_output_cursor_move_all_deferred(struct wlr_output *output, struct timespec *now) {
+	struct wlr_output_cursor *cursor;
+	wl_list_for_each(cursor, &output->cursors, link) {
+		if (cursor->deferred)
+			output_cursor_move(cursor, cursor->deferred_x, cursor->deferred_y, now);
+		else {
+			// Should be on wlr_output?
+			cursor->last_presentation = *now;
+		};
+	}
 }
 
 struct wlr_output_cursor *wlr_output_cursor_create(struct wlr_output *output) {

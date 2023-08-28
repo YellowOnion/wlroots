@@ -33,6 +33,8 @@ struct wlr_cursor {
 	struct wlr_cursor_state *state;
 	double x, y;
 
+	int max_latency;
+
 	/**
 	 * The interpretation of these signals is the responsibility of the
 	 * compositor, but some helpers are provided for your benefit. If you
@@ -153,6 +155,8 @@ void wlr_cursor_set_image(struct wlr_cursor *cur, const uint8_t *pixels,
  */
 void wlr_cursor_set_surface(struct wlr_cursor *cur, struct wlr_surface *surface,
 	int32_t hotspot_x, int32_t hotspot_y);
+
+void wlr_cursor_set_max_latency(struct wlr_cursor *cur, int max_latency);
 
 /**
  * Attaches this input device to this cursor. The input device must be one of:

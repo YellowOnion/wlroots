@@ -377,6 +377,11 @@ void wlr_cursor_set_surface(struct wlr_cursor *cur, struct wlr_surface *surface,
 	}
 }
 
+void wlr_cursor_set_max_latency(struct wlr_cursor *cur, int max_latency) {
+		cur->max_latency = max_latency;
+		wlr_log(WLR_DEBUG, "setting max_latency %i", max_latency);
+}
+
 static void handle_pointer_motion(struct wl_listener *listener, void *data) {
 	struct wlr_pointer_motion_event *event = data;
 	struct wlr_cursor_device *device =
