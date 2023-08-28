@@ -31,3 +31,7 @@ void timespec_sub(struct timespec *r, const struct timespec *a,
 		r->tv_nsec += NSEC_PER_SEC;
 	}
 }
+
+int32_t mhz_to_nsec(int32_t mhz) {
+	return 1000000000000LL / mhz;
+}
