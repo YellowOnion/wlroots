@@ -32,4 +32,6 @@ void timespec_from_nsec(struct timespec *r, int64_t nsec);
 void timespec_sub(struct timespec *r, const struct timespec *a,
 		const struct timespec *b);
 
+int32_t mhz_to_nsec(int32_t mhz);
+
 #endif

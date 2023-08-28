@@ -45,6 +45,7 @@ struct wlr_output_cursor {
 	struct wlr_fbox src_box;
 	enum wl_output_transform transform;
 	int32_t hotspot_x, hotspot_y;
+	// only when using a software cursor without a surface
 	struct wlr_texture *texture;
 	bool own_texture;
 	struct wlr_drm_syncobj_timeline *wait_timeline;
@@ -55,6 +56,11 @@ struct wlr_output_cursor {
 		struct wl_listener renderer_destroy;
 		struct wlr_color_transform *color_transform;
 	} WLR_PRIVATE;
+
+	struct timespec last_presentation;
+	bool deferred;
+	double deferred_x, deferred_y;
+	int max_latency;
 };
 
 enum wlr_output_adaptive_sync_status {
@@ -460,6 +466,13 @@ bool wlr_output_cursor_set_buffer(struct wlr_output_cursor *cursor,
 	struct wlr_buffer *buffer, int32_t hotspot_x, int32_t hotspot_y);
 bool wlr_output_cursor_move(struct wlr_output_cursor *cursor,
 	double x, double y);
+/**
+ * Call any_expired() before you check needs_frame.
+ * call all_deferred() whenever a new frame is needed.
+ * */
+void wlr_output_cursor_move_expired(struct wlr_output_cursor *cursor, struct timespec *now);
+void wlr_output_cursor_move_any_expired(struct wlr_output *output, struct timespec *now);
+void wlr_output_cursor_move_all_deferred(struct wlr_output *output, struct timespec *now);
 void wlr_output_cursor_destroy(struct wlr_output_cursor *cursor);
 
 /**
