@@ -149,6 +149,8 @@ struct wlr_output {
 	enum wlr_output_adaptive_sync_status adaptive_sync_status;
 	uint32_t render_format;
 
+	int max_cursor_latency;
+
 	bool needs_frame;
 	// damage for cursors and fullscreen surface, in output-local coordinates
 	bool frame_pending;

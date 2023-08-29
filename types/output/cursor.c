@@ -564,7 +564,12 @@ static bool output_cursor_move(struct wlr_output_cursor *cursor,
 
 static bool output_cursor_move_should_defer(struct wlr_output_cursor *cursor,
 		struct timespec *now) {
-	if (!cursor->max_latency
+	int max_latency = cursor->max_latency;
+
+	if (!max_latency)
+		max_latency = cursor->output->max_cursor_latency;
+
+	if (!max_latency
 		|| !cursor->output->refresh // avoid divide by zero
 		|| cursor->output->adaptive_sync_status != WLR_OUTPUT_ADAPTIVE_SYNC_ENABLED)
 		return false;
@@ -573,7 +578,7 @@ static bool output_cursor_move_should_defer(struct wlr_output_cursor *cursor,
 	int32_t vrr_min = NSEC_PER_SEC / 30; // edid? enforce 30fps minimum for now.
 	timespec_sub(&delta, now, &cursor->last_presentation);
 	if (delta.tv_sec
-		|| delta.tv_nsec >= cursor->max_latency
+		|| delta.tv_nsec >= max_latency
         || delta.tv_nsec >= vrr_min)
 		return false;
 
