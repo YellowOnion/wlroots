@@ -322,6 +322,7 @@ static void cursor_warp_unchecked(struct wlr_cursor *cur,
 
 	struct wlr_cursor_output_cursor *output_cursor;
 	wl_list_for_each(output_cursor, &cur->state->output_cursors, link) {
+		output_cursor->output_cursor->max_latency = cur->max_latency;
 		output_cursor_move(output_cursor);
 	}
 }
