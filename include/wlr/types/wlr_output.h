@@ -161,6 +161,8 @@ struct wlr_output {
 	// true, changes may either succeed or fail.
 	bool adaptive_sync_supported;
 
+	int max_cursor_latency;
+
 	bool needs_frame;
 	// damage for cursors and fullscreen surface, in output-local coordinates
 	bool frame_pending;
